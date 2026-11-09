@@ -1,0 +1,47 @@
+name: Test recipes
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_sdk_tests:
+        description: Run managed SDK tests (requires openeight on the public package index)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  scenario:
+    name: Refund scenario (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.12', '3.13', '3.14']
+    defaults:
+      run:
+        working-directory: examples/refund-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install 'langchain-core==1.6.7' 'pydantic==2.14.2' 'pytest>=8,<10'
+      - run: python -m pytest tests/test_scenario.py -q
+
+  managed:
+    name: Refund managed SDK integration
+    if: github.event_name == 'workflow_dispatch' && inputs.run_sdk_tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/refund-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-qualified.txt '.[test]'
+      - run: python -m pytest -q
